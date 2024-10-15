@@ -6,6 +6,8 @@ const User = require('./models/User');
 const YardOwner = require('./models/YardOwner');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const FinanceEmployee = require('./models/FinanceEmployee');
+
 dotenv.config();
 
 const app = express();
@@ -152,6 +154,70 @@ app.post('/yardowner/login', async (req, res) => {
 
 // Finance Login & Regiser 
 
+
+app.post('/finance/register', async (req, res) => {
+    const { empCode, name, designation, whatsapp, mobile, companyName, username, password } = req.body;
+
+    // Validate that all required fields are provided
+    if (!empCode || !name || !designation || !whatsapp || !mobile || !companyName || !username || !password) {
+        return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    try {
+        // Check if the username already exists
+        const existingUser = await FinanceEmployee.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+
+        // Check if the employee code already exists
+        const existingEmpCode = await FinanceEmployee.findOne({ empCode });
+        if (existingEmpCode) {
+            return res.status(400).json({ message: 'Employee Code already exists' });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create a new FinanceEmployee instance
+        const financeEmployee = new FinanceEmployee({
+            empCode,
+            name,
+            designation,
+            whatsapp,
+            mobile,
+            companyName,
+            username,
+            password: hashedPassword // Save the hashed password
+        });
+
+        // Save the new finance employee to the database
+        await financeEmployee.save();
+        res.status(201).json({ message: 'Finance Employee registered successfully.' });
+    } catch (error) {
+        // Log the error for debugging purposes
+        console.error('Error registering finance employee:', error);
+        res.status(400).json({ message: 'Error registering finance employee: ' + error.message });
+    }
+});
+// Finance Employee Login endpoint
+app.post('/finance/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const financeEmployee = await FinanceEmployee.findOne({ username });
+        if (!financeEmployee) return res.status(400).json({ message: 'Invalid credentials' });
+
+        const isMatch = await bcrypt.compare(password, financeEmployee.password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        // Generate JWT token
+        const token = jwt.sign({ id: financeEmployee._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 
 
