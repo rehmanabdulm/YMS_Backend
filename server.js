@@ -7,6 +7,8 @@ const YardOwner = require('./models/YardOwner');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const FinanceEmployee = require('./models/FinanceEmployee');
+const InwardForm = require('./models/InwardForm');
+
 
 dotenv.config();
 
@@ -225,7 +227,35 @@ app.post('/finance/login', async (req, res) => {
 
 
 
+//Inward From
 
+app.post('/api/inward', async (req, res) => {
+    try {
+      const inwardData = new InwardForm({
+        clientName: req.body.clientName,
+        agreementNumber: req.body.agreementNumber,
+        make: req.body.make,
+        model: req.body.model,
+        variant: req.body.variant,
+        refNo: req.body.refNo,
+        segment: req.body.segment,
+        geoLocation: req.body.geoLocation,
+        inwardDateTime: req.body.inwardDateTime,
+      });
+  
+      const savedInward = await inwardData.save();
+      res.status(201).json({
+        message: 'Inward form data saved successfully',
+        data: savedInward,
+      });
+    } catch (err) {
+      res.status(400).json({
+        message: 'Error saving inward form data',
+        error: err.message,
+      });
+    }
+  });
+  
 
 // Start the server
 app.listen(PORT, () => {
