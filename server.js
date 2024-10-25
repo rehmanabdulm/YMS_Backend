@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const FinanceEmployee = require('./models/FinanceEmployee');
 const InwardForm = require('./models/InwardForm');
-
+const makeModelDataset = require('./models/makeModelVariant');  // Import the route
 
 dotenv.config();
 
@@ -255,7 +255,21 @@ app.post('/api/inward', async (req, res) => {
       });
     }
   });
-  
+  //MMV API
+// MMV API - Add this new dataset fetching API
+
+// Use the route for fetching the makeModelVariant dataset
+app.get('/api/makeModelDataset', async (req, res) => {
+    try {
+        const makeModelVariants = await makeModelDataset.find({}, 'Make Model Variant Segment');
+        res.status(200).json(makeModelVariants);
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+
 
 // Start the server
 app.listen(PORT, () => {
