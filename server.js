@@ -2,6 +2,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const multer = require('multer');
 const User = require('./models/User');
 const YardOwner = require('./models/YardOwner');
 const bcrypt = require('bcryptjs');
@@ -9,7 +10,11 @@ const jwt = require('jsonwebtoken');
 const FinanceEmployee = require('./models/FinanceEmployee');
 const InwardForm = require('./models/InwardForm');
 const makeModelDataset = require('./models/makeModelVariant');  // Import the route
+const StateCityPincode = require('./models/StateCityPincode');
+const cloudinary = require('cloudinary').v2;
+// const makeModelDataset = require('./models/makeModelDataset'); // Import your model
 
+const path = require('path');
 dotenv.config();
 
 const app = express();
@@ -25,6 +30,70 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error(err));
+
+
+require('dotenv').config(); // Load environment variables
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+  
+  // Set up multer to handle multiple photo uploads
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'uploads'); // Save files to 'uploads' folder temporarily
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+    }
+  });
+  const upload = multer({ storage: storage });
+  
+  // API route to receive and upload photos
+  app.post('/api/inward/:id/photos', upload.fields([
+    { name: 'frontView', maxCount: 1 },
+    { name: 'rightView', maxCount: 1 },
+    { name: 'backView', maxCount: 1 },
+    { name: 'leftView', maxCount: 1 },
+    { name: 'engineView', maxCount: 1 },
+    { name: 'meterReading', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const uploadedPhotos = {}; // Object to store the Cloudinary URLs for each view
+  
+      // Helper function to upload a file to Cloudinary and store the URL
+      const uploadToCloudinary = (filePath, publicId) => {
+        return cloudinary.uploader.upload(filePath, {
+          folder: "vehicle_photos",
+          public_id: publicId // Set Cloudinary public_id as the view name
+        })
+        .then(result => {
+          uploadedPhotos[publicId] = result.secure_url;
+          fs.unlinkSync(filePath);
+        })
+        .catch(error => {
+          console.error(`Error uploading ${publicId} to Cloudinary:`, error);
+        });
+      };
+  
+      // Create an array of promises for each file to be uploaded
+      const uploadPromises = Object.keys(req.files).map(fieldName => {
+        const file = req.files[fieldName][0];
+        return uploadToCloudinary(file.path, fieldName);
+      });
+      await Promise.all(uploadPromises);
+  
+      res.status(200).json({
+        message: 'Photos uploaded successfully',
+        vehiclePhotos: uploadedPhotos
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error uploading photos', error: error.message });
+    }
+  });
 
 // Simple endpoint
 app.get('/', (req, res) => {
@@ -229,6 +298,46 @@ app.post('/finance/login', async (req, res) => {
 
 //Inward From
 
+// app.post('/api/inward', async (req, res) => {
+//     try {
+//       const inwardData = new InwardForm({
+//         clientName: req.body.clientName,
+//         agreementNumber: req.body.agreementNumber,
+//         make: req.body.make,
+//         model: req.body.model,
+//         variant: req.body.variant,
+//         refNo: req.body.refNo,
+//         segment: req.body.segment,
+//         geoLocation: req.body.geoLocation,
+//         inwardDateTime: req.body.inwardDateTime,
+//       });
+  
+//       const savedInward = await inwardData.save();
+//       res.status(201).json({
+//         message: 'Inward form data saved successfully',
+//         data: savedInward,
+//       });
+//     } catch (err) {
+//       res.status(400).json({
+//         message: 'Error saving inward form data',
+//         error: err.message,
+//       });
+//     }
+//   });
+
+// Multer setup for file uploads
+// const storage = multer.diskStorage({
+//     destination: (req, file, cb) => {
+//       cb(null, 'uploads/');
+//     },
+//     filename: (req, file, cb) => {
+//       cb(null, `${Date.now()}-${file.originalname}`);
+//     }
+//   });
+//   const upload = multer({ storage });
+
+
+//   API END POINT FOR INWARD FORMS
 app.post('/api/inward', async (req, res) => {
     try {
       const inwardData = new InwardForm({
@@ -239,8 +348,26 @@ app.post('/api/inward', async (req, res) => {
         variant: req.body.variant,
         refNo: req.body.refNo,
         segment: req.body.segment,
+        loanNo: req.body.loanNo,               // New field added
+        fuelType: req.body.fuelType,           // New field added
+        odometerReading: req.body.odometerReading, // New field added
+        yard: req.body.yard, 
+        inwardDateTime: req.body.inwardDateTime,                 // New field added
         geoLocation: req.body.geoLocation,
-        inwardDateTime: req.body.inwardDateTime,
+     
+        vehicleDetails: {
+          customerName: req.body.vehicleDetails.customerName,
+          engineNumber: req.body.vehicleDetails.engineNumber,
+          chassisNumber: req.body.vehicleDetails.chassisNumber,
+          color: req.body.vehicleDetails.color,
+          vehicleClass: req.body.vehicleDetails.vehicleClass,
+          vehicleCondition: req.body.vehicleDetails.vehicleCondition,
+          keyLocation: req.body.vehicleDetails.keyLocation,
+          transmission: req.body.vehicleDetails.transmission,
+          remarks: req.body.vehicleDetails.remarks,
+          
+        },
+        checklist: req.body.checklist // assuming checklist is an array of objects sent in the correct format
       });
   
       const savedInward = await inwardData.save();
@@ -255,6 +382,72 @@ app.post('/api/inward', async (req, res) => {
       });
     }
   });
+
+//   // Route to upload vehicle photos
+// app.post('/api/inward/:id/photos', upload.fields([
+//     { name: 'frontView', maxCount: 1 },
+//     { name: 'rightView', maxCount: 1 },
+//     { name: 'backView', maxCount: 1 },
+//     { name: 'leftView', maxCount: 1 },
+//     { name: 'engineView', maxCount: 1 },
+//     { name: 'meterReading', maxCount: 1 }
+//   ]), async (req, res) => {
+//     try {
+//       const inwardForm = await InwardForm.findById(req.params.id);
+//       if (!inwardForm) {
+//         return res.status(404).json({ message: 'Inward form not found' });
+//       }
+  
+//       // Update photo URLs in vehiclePhotos field
+//       inwardForm.vehiclePhotos.frontView = req.files.frontView ? req.files.frontView[0].path : null;
+//       inwardForm.vehiclePhotos.rightView = req.files.rightView ? req.files.rightView[0].path : null;
+//       inwardForm.vehiclePhotos.backView = req.files.backView ? req.files.backView[0].path : null;
+//       inwardForm.vehiclePhotos.leftView = req.files.leftView ? req.files.leftView[0].path : null;
+//       inwardForm.vehiclePhotos.engineView = req.files.engineView ? req.files.engineView[0].path : null;
+//       inwardForm.vehiclePhotos.meterReading = req.files.meterReading ? req.files.meterReading[0].path : null;
+  
+//       const updatedInward = await inwardForm.save();
+//       res.status(200).json({ message: 'Photos uploaded successfully', data: updatedInward });
+//     } catch (err) {
+//       res.status(400).json({ message: 'Error uploading photos', error: err.message });
+//     }
+//   });
+app.post('/api/inward/:id/photos', upload.fields([
+    { name: 'frontView', maxCount: 1 },
+    { name: 'rightView', maxCount: 1 },
+    { name: 'backView', maxCount: 1 },
+    { name: 'leftView', maxCount: 1 },
+    { name: 'engineView', maxCount: 1 },
+    { name: 'meterReading', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid ID format' });
+        }
+
+        // Find the document by id
+        const inwardForm = await InwardForm.findById(id);
+        if (!inwardForm) {
+            return res.status(404).json({ message: 'Inward form not found' });
+        }
+
+        // Update photo URLs in vehiclePhotos field
+        inwardForm.vehiclePhotos.frontView = req.files.frontView ? req.files.frontView[0].path : null;
+        inwardForm.vehiclePhotos.rightView = req.files.rightView ? req.files.rightView[0].path : null;
+        inwardForm.vehiclePhotos.backView = req.files.backView ? req.files.backView[0].path : null;
+        inwardForm.vehiclePhotos.leftView = req.files.leftView ? req.files.leftView[0].path : null;
+        inwardForm.vehiclePhotos.engineView = req.files.engineView ? req.files.engineView[0].path : null;
+        inwardForm.vehiclePhotos.meterReading = req.files.meterReading ? req.files.meterReading[0].path : null;
+
+        const updatedInward = await inwardForm.save();
+        res.status(200).json({ message: 'Photos uploaded successfully', data: updatedInward });
+    } catch (err) {
+        res.status(400).json({ message: 'Error uploading photos', error: err.message });
+    }
+});
   //MMV API
 // MMV API - Add this new dataset fetching API
 
@@ -269,7 +462,7 @@ app.get('/api/makeModelDataset', async (req, res) => {
     }
 });
 
-
+ 
 
 // Start the server
 app.listen(PORT, () => {
