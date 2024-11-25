@@ -227,19 +227,19 @@ app.post('/yardowner/login', async (req, res) => {
 
 
 app.post('/finance/register', async (req, res) => {
-    const { empCode, name, designation, whatsapp, mobile, companyName, username, password } = req.body;
+    const { empCode, name, email, aadharnumber, designation, whatsapp, mobile, companyName, password } = req.body;
 
     // Validate that all required fields are provided
-    if (!empCode || !name || !designation || !whatsapp || !mobile || !companyName || !username || !password) {
+    if (!empCode || !name ||!email ||!aadharnumber || !designation || !whatsapp || !mobile || !companyName || !password) {
         return res.status(400).json({ message: 'All fields are required.' });
     }
 
     try {
         // Check if the username already exists
-        const existingUser = await FinanceEmployee.findOne({ username });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Username already exists' });
-        }
+       // const existingUser = await FinanceEmployee.findOne({ username });
+        //if (existingUser) {
+          //  return res.status(400).json({ message: 'Username already exists' });
+        //}
 
         // Check if the employee code already exists
         const existingEmpCode = await FinanceEmployee.findOne({ empCode });
@@ -254,11 +254,13 @@ app.post('/finance/register', async (req, res) => {
         const financeEmployee = new FinanceEmployee({
             empCode,
             name,
+            email,
+            aadharnumber,
             designation,
             whatsapp,
             mobile,
             companyName,
-            username,
+            //username,
             password: hashedPassword // Save the hashed password
         });
 
@@ -273,10 +275,10 @@ app.post('/finance/register', async (req, res) => {
 });
 // Finance Employee Login endpoint
 app.post('/finance/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { empCode, password } = req.body;
 
     try {
-        const financeEmployee = await FinanceEmployee.findOne({ username });
+        const financeEmployee = await FinanceEmployee.findOne({ empCode });
         if (!financeEmployee) return res.status(400).json({ message: 'Invalid credentials' });
 
         const isMatch = await bcrypt.compare(password, financeEmployee.password);
