@@ -1,14 +1,19 @@
 const mongoose = require('mongoose');
-
+const { v4: uuidv4 } = require('uuid'); // Import the UUID generator
 // Define the checklist item schema
 const ChecklistItemSchema = new mongoose.Schema({
   label: { type: String, required: true },
   yes: { type: Boolean, default: false },
   no: { type: Boolean, default: false }
 });
-
+ 
 // Define the main schema
 const InwardFormSchema = new mongoose.Schema({
+  uniqueId: {
+    type: String, 
+    default: uuidv4, // Generate a unique ID automatically
+    unique: true     // Ensure uniqueness in the database
+  },
   clientName: { type: String, required: true },
   agreementNumber: { type: String, required: true },
   make: { type: String, required: true },
@@ -21,9 +26,7 @@ const InwardFormSchema = new mongoose.Schema({
   odometerReading: { type: String, required: true },
   yard: { type: String, required: true },
   inwardDateTime: { type: String, required: true },
-
   geoLocation: { type: String, required: true },
-
 
   // Vehicle Details section
   vehicleDetails: {
@@ -81,9 +84,24 @@ const InwardFormSchema = new mongoose.Schema({
     leftView: { type: String, default: null },
     engineView: { type: String, default: null },
     meterReading: { type: String, default: null }
-  }
-});
+  },
+
+  // New Tire Photos section
+  tyrePhotos: {
+    tyre1: { type: String, default: null },
+    tyre2: { type: String, default: null },
+    tyre3: { type: String, default: null },
+    tyre4: { type: String, default: null },
+    tyre5: { type: String, default: null },
+    tyre6: { type: String, default: null },
+    tyre7: { type: String, default: null },
+    tyre8: { type: String, default: null },
+    tyre9: { type: String, default: null },
+    tyre10: { type: String, default: null }
+  },
+},{ timestamps: true });
 
 const InwardForm = mongoose.model('InwardForm', InwardFormSchema);
+
 
 module.exports = InwardForm;
