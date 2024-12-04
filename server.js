@@ -671,6 +671,54 @@ app.get('/api/makeModelDataset', async (req, res) => {
     }
 });
 
+// Code BY Abdul
+// Route to fetch InwardForm details by uniqueId
+app.get('/api/inward/:uniqueId', async (req, res) => {
+  console.log('Received request for uniqueId:', req.params.uniqueId); // Log to check route access
+
+  try {
+    const { uniqueId } = req.params;
+
+    // Check if uniqueId is present
+    if (!uniqueId || uniqueId.trim() === '') {
+      console.log('Unique ID is missing or empty');
+      return res.status(400).json({ message: 'Unique ID is required' });
+    }
+
+    // Validate the ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(uniqueId)) {
+      console.log('Invalid Unique ID format');
+      return res.status(400).json({ message: 'Invalid Unique ID format' });
+    }
+
+    console.log('Unique ID validation passed, searching in database...');
+
+    // Fetch the InwardForm by _id
+    const inwardForm = await InwardForm.findById(uniqueId);
+
+    // Check if the form exists
+    if (!inwardForm) {
+      console.log('No InwardForm found for uniqueId:', uniqueId);
+      return res.status(404).json({ message: `No Inward form found for Unique ID: ${uniqueId}` });
+    }
+
+    console.log('InwardForm found:', inwardForm);
+
+    // Return the fetched form
+    res.status(200).json({
+      message: 'Inward form retrieved successfully',
+      data: inwardForm,
+    });
+  } catch (err) {
+    console.error(`Error fetching InwardForm for Unique ID: ${req.params.uniqueId}`, err);
+
+    res.status(500).json({
+      message: 'Internal Server Error while fetching the Inward form',
+      error: err.message,
+    });
+  }
+});
+
  
 
 // Start the server
