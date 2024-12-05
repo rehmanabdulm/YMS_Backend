@@ -671,7 +671,53 @@ app.get('/api/makeModelDataset', async (req, res) => {
     }
 });
 
- 
+ // Code By Abdul 
+// Route to fetch InwardForm details by uniqueId
+app.get('/api/inward/:uniqueId', async (req, res) => {
+  let { uniqueId } = req.params;
+
+  console.log('Received request for uniqueId:', uniqueId); // Log to check route access
+
+  try {
+    // Clean the uniqueId to remove any hidden characters like spaces, newlines, etc.
+    uniqueId = uniqueId.trim().replace(/\r?\n|\r/g, ''); // Remove any newline or carriage return characters
+
+    console.log('Cleaned Unique ID:', uniqueId);
+    console.log('Cleaned Unique ID Length:', uniqueId.length);
+
+    // Check if uniqueId is present, 24 characters long, and consists only of valid hex characters
+    if (!uniqueId || uniqueId.length !== 24 || !/^[a-fA-F0-9]{24}$/.test(uniqueId)) {
+      console.log('Invalid Unique ID format');
+      return res.status(400).json({ message: 'Invalid Unique ID format' });
+    }
+
+    console.log('Unique ID validation passed, searching in database...');
+
+    // Fetch the InwardForm by _id (ObjectId)
+    const inwardForm = await InwardForm.findById(uniqueId);
+
+    // Check if the form exists
+    if (!inwardForm) {
+      console.log('No InwardForm found for uniqueId:', uniqueId);
+      return res.status(404).json({ message: `No Inward form found for Unique ID: ${uniqueId}` });
+    }
+
+    console.log('InwardForm found:', inwardForm);
+
+    // Return the fetched form
+    res.status(200).json({
+      message: 'Inward form retrieved successfully',
+      data: inwardForm,
+    });
+  } catch (err) {
+    console.error(`Error fetching InwardForm for Unique ID: ${uniqueId}`, err);
+
+    res.status(500).json({
+      message: 'Internal Server Error while fetching the Inward form',
+      error: err.message,
+    });
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {
